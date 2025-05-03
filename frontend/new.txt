@@ -1,0 +1,82 @@
+// Open edit modal
+  const handleEdit = (problem: Problem) => {
+    setEditingProblemId(problem.id);
+    setName(problem.name);
+    setDifficulty(problem.difficulty);
+    setTimeTaken(problem.timeTaken);
+    setNotes(problem.notes);
+    setLink(problem.link || "");
+    setTags(problem.tags);
+    setStruggleLevel(problem.struggleLevel);
+    setUsedHelp(problem.usedHelp);
+    setNeedsRevisit(problem.needsRevisit);
+    setIsModalOpen(true);
+  };
+
+  // Handle delete problem
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this problem?")) {
+      try {
+        await deleteProblem(id);
+        toast({
+          title: "Problem Deleted",
+          description: "Problem has been deleted successfully",
+        });
+      } catch (error) {
+        console.error("Error deleting problem:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete problem",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  // Handle toggle revisit
+  const handleToggleRevisit = async (id: string, currentValue: boolean) => {
+    try {
+      await toggleRevisit(id, !currentValue);
+      toast({
+        title: !currentValue
+          ? "Added to Retry List"
+          : "Removed from Retry List",
+        description: !currentValue
+          ? "This problem has been added to your retry list"
+          : "This problem has been removed from your retry list",
+      });
+    } catch (error) {
+      console.error("Error toggling revisit:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update problem",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Add new tag
+  const handleAddTag = () => {
+    if (newTag && !availableTags.includes(newTag)) {
+      setAvailableTags((prev) => [...prev, newTag].sort());
+      setNewTag("");
+    }
+  };
+
+  // Toggle tag selection
+  const toggleTag = (tag: string) => {
+    if (tags.includes(tag)) {
+      setTags(tags.filter((t) => t !== tag));
+    } else {
+      setTags([...tags, tag]);
+    }
+  };
+
+  // Toggle tag filter
+  const toggleTagFilter = (tag: string) => {
+    if (tagsFilter.includes(tag)) {
+      setTagsFilter(tagsFilter.filter((t) => t !== tag));
+    } else {
+      setTagsFilter([...tagsFilter, tag]);
+    }
+  };

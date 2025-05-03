@@ -1,157 +1,218 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useAuth } from '../contexts/AuthContext';
-import { Problem, useProblemStore } from '../store/problemStore';
-import { useToast } from '../hooks/useToast';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { formatTime, getDifficultyColor, formatRelativeTime } from '../lib/utils';
-import { Clock, Edit2, Trash2, BookMarked, Link as LinkIcon, Info, X } from 'lucide-react';
-import { Timestamp } from 'firebase/firestore';
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { useAuth } from "../contexts/AuthContext";
+import { Problem, useProblemStore } from "../store/problemStore";
+import { useToast } from "../hooks/useToast";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import {
+  formatTime,
+  getDifficultyColor,
+  formatRelativeTime,
+} from "../lib/utils";
+import {
+  Clock,
+  Edit2,
+  Trash2,
+  BookMarked,
+  Link as LinkIcon,
+  Info,
+  X,
+} from "lucide-react";
 
-// Define difficulty options
-const DIFFICULTY_OPTIONS = ['Easy', 'Medium', 'Hard'] as const;
+const DIFFICULTY_OPTIONS = ["Easy", "Medium", "Hard"] as const;
 
-// Define initial tags
 const INITIAL_TAGS = [
-  'Array', 'String', 'Hash Table', 'Dynamic Programming', 'Math',
-  'Sorting', 'Greedy', 'Depth-First Search', 'Binary Search', 'Graph',
-  'SQL', 'Joins', 'Indexing', 'Tree', 'Two Pointers'
+  "Array",
+  "String",
+  "Hash Table",
+  "Dynamic Programming",
+  "Math",
+  "Sorting",
+  "Greedy",
+  "Depth-First Search",
+  "Breadth-First Search",
+  "Backtracking",
+  "Binary Search",
+  "Graph",
+  "SQL",
+  "Joins",
+  "Indexing",
+  "Tree",
+  "Two Pointers",
 ];
 
 const ProblemLogger = () => {
-  const { user } = useAuth();
-  const { problems, fetchProblems, addProblem, updateProblem, deleteProblem, toggleRevisit } = useProblemStore();
   const { toast } = useToast();
-  
+
   // Form state
+  const [problems, setProblems] = useState<Problem[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [difficulty, setDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
+  const [name, setName] = useState("");
+  const [difficulty, setDifficulty] = useState<"Easy" | "Medium" | "Hard">(
+    "Medium"
+  );
   const [timeTaken, setTimeTaken] = useState(30);
-  const [notes, setNotes] = useState('');
-  const [link, setLink] = useState('');
+  const [notes, setNotes] = useState("");
+  const [link, setLink] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [strugglelevel, setStruggleLevel] = useState(3);
   const [usedHelp, setUsedHelp] = useState(false);
   const [needsRevisit, setNeedsRevisit] = useState(false);
   const [availableTags, setAvailableTags] = useState<string[]>(INITIAL_TAGS);
-  const [newTag, setNewTag] = useState('');
-  
+  const [newTag, setNewTag] = useState("");
+
   // Search and filter state
-  const [searchTerm, setSearchTerm] = useState('');
-  const [difficultyFilter, setDifficultyFilter] = useState<string>('All');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [difficultyFilter, setDifficultyFilter] = useState<string>("All");
   const [tagsFilter, setTagsFilter] = useState<string[]>([]);
-  
+
   // Edit state
   const [editingProblemId, setEditingProblemId] = useState<string | null>(null);
-  
-  // Load problems on component mount
-  useEffect(() => {
-    if (user) {
-      fetchProblems(user.uid);
+  // Fetch problems from the API
+  const fetchProblemsFromAPI = async () => {
+    try {
+      const jwtToken = localStorage.getItem("jwtToken");
+      if (!jwtToken) {
+        throw new Error("User is not authenticated. Please log in again.");
+      }
+
+      const response = await fetch(
+        "https://track-the-hack-tau.vercel.app/api/problems/get-problems",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${jwtToken}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch problems");
+      }
+
+      // Ensure all problems have a `tags` property
+      const processedData = data.map((problem: Problem) => ({
+        ...problem,
+        tags: problem.tags || [], // Default to an empty array if `tags` is undefined
+      }));
+
+      // Update the problems state
+      console.log(processedData);
+      setProblems(processedData);
+    } catch (error: any) {
+      console.error("Error fetching problems:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch problems",
+        variant: "destructive",
+      });
     }
-  }, [user, fetchProblems]);
-  
+  };
+  useEffect(() => {
+    fetchProblemsFromAPI();
+  }, []);
+
   // Extract unique tags from problems for filter options
   useEffect(() => {
     if (problems.length > 0) {
       const uniqueTags = new Set<string>();
-      
+
       // Add initial tags
-      INITIAL_TAGS.forEach(tag => uniqueTags.add(tag));
-      
+      INITIAL_TAGS.forEach((tag) => uniqueTags.add(tag));
+
       // Add tags from problems
-      problems.forEach(problem => {
-        problem.tags.forEach(tag => uniqueTags.add(tag));
+      problems.forEach((problem) => {
+        problem.tags.forEach((tag) => uniqueTags.add(tag));
       });
-      
+
       setAvailableTags(Array.from(uniqueTags).sort());
     }
   }, [problems]);
-  
+
   // Reset form
   const resetForm = () => {
-    setName('');
-    setDifficulty('Medium');
+    setName("");
+    setDifficulty("Medium");
     setTimeTaken(30);
-    setNotes('');
-    setLink('');
+    setNotes("");
+    setLink("");
     setTags([]);
     setStruggleLevel(3);
     setUsedHelp(false);
     setNeedsRevisit(false);
     setEditingProblemId(null);
   };
-  
+
   // Handle form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!name) {
       toast({
-        title: 'Error',
-        description: 'Problem name is required',
-        variant: 'destructive',
+        title: "Error",
+        description: "Problem name is required",
+        variant: "destructive",
       });
       return;
     }
-    
+
     try {
-      if (editingProblemId) {
-        // Update existing problem
-        await updateProblem(editingProblemId, {
-          name,
-          difficulty,
-          timeTaken,
-          notes,
-          link,
-          tags,
-          struggleLevel: strugglelevel,
-          usedHelp,
-          needsRevisit,
-        });
-        
-        toast({
-          title: 'Problem Updated',
-          description: 'Problem has been updated successfully',
-        });
-      } else {
-        // Add new problem
-        const newProblem = {
-          userId: user!.uid,
-          name,
-          difficulty,
-          timeTaken,
-          solvedAt: Timestamp.now(),
-          notes,
-          link,
-          tags,
-          struggleLevel: strugglelevel,
-          usedHelp,
-          needsRevisit,
-        };
-        
-        const addedProblem = await addProblem(newProblem);
-        
-        toast({
-          title: 'Problem Logged',
-          description: `You earned ${addedProblem.points} points!`,
-        });
+      const jwtToken = localStorage.getItem("jwtToken");
+      if (!jwtToken) {
+        throw new Error("User is not authenticated. Please log in again.");
       }
-      
+
+      const problemData = {
+        name,
+        difficulty,
+        time_taken_minutes: timeTaken,
+        reference_link: link || null,
+        struggle_level: strugglelevel,
+        used_hint: usedHelp,
+        added_to_retry: needsRevisit,
+        notes: notes || null,
+        solved_at: new Date().toISOString(),
+        tags,
+      };
+
+      const response = await fetch(
+        "https://track-the-hack-tau.vercel.app/api/problems/log",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${jwtToken}`,
+          },
+          body: JSON.stringify(problemData),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to log the problem");
+      }
+
+      toast({
+        title: "Problem Logged",
+        description: `Problem "${problemData.name}" has been logged successfully!`,
+      });
+
       setIsModalOpen(false);
       resetForm();
-    } catch (error) {
-      console.error('Error saving problem:', error);
+    } catch (error: any) {
+      console.error("Error logging problem:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to save problem',
-        variant: 'destructive',
+        title: "Error",
+        description: error.message || "Failed to log the problem",
+        variant: "destructive",
       });
     }
   };
-  
   // Open edit modal
   const handleEdit = (problem: Problem) => {
     setEditingProblemId(problem.id);
@@ -159,101 +220,101 @@ const ProblemLogger = () => {
     setDifficulty(problem.difficulty);
     setTimeTaken(problem.timeTaken);
     setNotes(problem.notes);
-    setLink(problem.link || '');
+    setLink(problem.link || "");
     setTags(problem.tags);
     setStruggleLevel(problem.struggleLevel);
     setUsedHelp(problem.usedHelp);
     setNeedsRevisit(problem.needsRevisit);
     setIsModalOpen(true);
   };
-  
+
   // Handle delete problem
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this problem?')) {
+    if (window.confirm("Are you sure you want to delete this problem?")) {
       try {
         await deleteProblem(id);
         toast({
-          title: 'Problem Deleted',
-          description: 'Problem has been deleted successfully',
+          title: "Problem Deleted",
+          description: "Problem has been deleted successfully",
         });
       } catch (error) {
-        console.error('Error deleting problem:', error);
+        console.error("Error deleting problem:", error);
         toast({
-          title: 'Error',
-          description: 'Failed to delete problem',
-          variant: 'destructive',
+          title: "Error",
+          description: "Failed to delete problem",
+          variant: "destructive",
         });
       }
     }
   };
-  
+
   // Handle toggle revisit
   const handleToggleRevisit = async (id: string, currentValue: boolean) => {
     try {
       await toggleRevisit(id, !currentValue);
       toast({
-        title: !currentValue ? 'Added to Retry List' : 'Removed from Retry List',
-        description: !currentValue 
-          ? 'This problem has been added to your retry list' 
-          : 'This problem has been removed from your retry list',
+        title: !currentValue
+          ? "Added to Retry List"
+          : "Removed from Retry List",
+        description: !currentValue
+          ? "This problem has been added to your retry list"
+          : "This problem has been removed from your retry list",
       });
     } catch (error) {
-      console.error('Error toggling revisit:', error);
+      console.error("Error toggling revisit:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to update problem',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to update problem",
+        variant: "destructive",
       });
     }
   };
-  
+
   // Add new tag
   const handleAddTag = () => {
     if (newTag && !availableTags.includes(newTag)) {
-      setAvailableTags(prev => [...prev, newTag].sort());
-      setNewTag('');
+      setAvailableTags((prev) => [...prev, newTag].sort());
+      setNewTag("");
     }
   };
-  
+
   // Toggle tag selection
   const toggleTag = (tag: string) => {
     if (tags.includes(tag)) {
-      setTags(tags.filter(t => t !== tag));
+      setTags(tags.filter((t) => t !== tag));
     } else {
       setTags([...tags, tag]);
     }
   };
-  
+
   // Toggle tag filter
   const toggleTagFilter = (tag: string) => {
     if (tagsFilter.includes(tag)) {
-      setTagsFilter(tagsFilter.filter(t => t !== tag));
+      setTagsFilter(tagsFilter.filter((t) => t !== tag));
     } else {
       setTagsFilter([...tagsFilter, tag]);
     }
   };
-  
   // Filter problems based on search and filters
-  const filteredProblems = problems.filter(problem => {
+  const filteredProblems = problems.filter((problem) => {
     // Search term filter
-    const matchesSearch = 
-      searchTerm === '' || 
+    const matchesSearch =
+      searchTerm === "" ||
       problem.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       problem.notes.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     // Difficulty filter
-    const matchesDifficulty = 
-      difficultyFilter === 'All' || 
-      problem.difficulty === difficultyFilter;
-    
+    const matchesDifficulty =
+      difficultyFilter === "All" || problem.difficulty === difficultyFilter;
+
     // Tags filter
-    const matchesTags = 
-      tagsFilter.length === 0 || 
-      tagsFilter.some(tag => problem.tags.includes(tag));
-    
+    const matchesTags =
+      tagsFilter.length === 0 ||
+      tagsFilter.some((tag) => problem.tags.includes(tag));
+
     return matchesSearch && matchesDifficulty && matchesTags;
   });
-  
+
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -264,22 +325,26 @@ const ProblemLogger = () => {
       },
     },
   };
-  
+
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
   };
-  
+
   return (
     <>
       <div className="space-y-6">
         {/* Header with actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold font-mono text-white">Problem Logger</h2>
-            <p className="text-gray-400 mt-1">Track and log your solved problems</p>
+            <h2 className="text-2xl font-semibold font-mono text-white">
+              Problem Logger
+            </h2>
+            <p className="text-gray-400 mt-1">
+              Track and log your solved problems
+            </p>
           </div>
-          
+
           <Button
             variant="neon"
             onClick={() => {
@@ -291,7 +356,7 @@ const ProblemLogger = () => {
             Log New Problem
           </Button>
         </div>
-        
+
         {/* Search and Filter */}
         <div className="p-4 glassmorphism rounded-lg space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -305,7 +370,7 @@ const ProblemLogger = () => {
                 className="bg-dark-400/50 border-gray-700"
               />
             </div>
-            
+
             {/* Difficulty Filter */}
             <div>
               <select
@@ -321,17 +386,25 @@ const ProblemLogger = () => {
                 ))}
               </select>
             </div>
-            
+
             {/* Tag Filter Dropdown */}
             <div className="relative">
               <button
                 type="button"
                 className="w-full h-9 rounded-md border border-gray-700 bg-dark-400/50 px-3 py-1 text-sm text-left focus:outline-none focus:ring-1 focus:ring-primary"
-                onClick={() => document.getElementById('tag-filter-dropdown')?.classList.toggle('hidden')}
+                onClick={() =>
+                  document
+                    .getElementById("tag-filter-dropdown")
+                    ?.classList.toggle("hidden")
+                }
               >
-                {tagsFilter.length === 0 ? 'Filter by tags...' : `${tagsFilter.length} tag${tagsFilter.length > 1 ? 's' : ''} selected`}
+                {tagsFilter.length === 0
+                  ? "Filter by tags..."
+                  : `${tagsFilter.length} tag${
+                      tagsFilter.length > 1 ? "s" : ""
+                    } selected`}
               </button>
-              
+
               <div
                 id="tag-filter-dropdown"
                 className="hidden absolute z-10 mt-1 w-full rounded-md bg-dark-300 shadow-lg border border-gray-700 p-2 max-h-60 overflow-y-auto custom-scrollbar"
@@ -344,8 +417,8 @@ const ProblemLogger = () => {
                       onClick={() => toggleTagFilter(tag)}
                       className={`px-2 py-1 rounded-md text-xs ${
                         tagsFilter.includes(tag)
-                          ? 'bg-primary text-white'
-                          : 'bg-dark-400 text-gray-300 hover:bg-dark-200'
+                          ? "bg-primary text-white"
+                          : "bg-dark-400 text-gray-300 hover:bg-dark-200"
                       }`}
                     >
                       {tag}
@@ -355,27 +428,30 @@ const ProblemLogger = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Active Filters */}
-          {(difficultyFilter !== 'All' || tagsFilter.length > 0) && (
+          {(difficultyFilter !== "All" || tagsFilter.length > 0) && (
             <div className="flex flex-wrap items-center gap-2 pt-2">
               <span className="text-sm text-gray-400">Active filters:</span>
-              
-              {difficultyFilter !== 'All' && (
+
+              {difficultyFilter !== "All" && (
                 <span className="bg-dark-300 text-gray-300 px-2 py-1 rounded-md text-xs flex items-center">
                   {difficultyFilter}
                   <button
                     type="button"
-                    onClick={() => setDifficultyFilter('All')}
+                    onClick={() => setDifficultyFilter("All")}
                     className="ml-1 text-gray-400 hover:text-white"
                   >
                     <X size={14} />
                   </button>
                 </span>
               )}
-              
+
               {tagsFilter.map((tag) => (
-                <span key={tag} className="bg-dark-300 text-gray-300 px-2 py-1 rounded-md text-xs flex items-center">
+                <span
+                  key={tag}
+                  className="bg-dark-300 text-gray-300 px-2 py-1 rounded-md text-xs flex items-center"
+                >
                   {tag}
                   <button
                     type="button"
@@ -386,11 +462,11 @@ const ProblemLogger = () => {
                   </button>
                 </span>
               ))}
-              
+
               <button
                 type="button"
                 onClick={() => {
-                  setDifficultyFilter('All');
+                  setDifficultyFilter("All");
                   setTagsFilter([]);
                 }}
                 className="text-xs text-primary hover:text-primary/80"
@@ -400,13 +476,17 @@ const ProblemLogger = () => {
             </div>
           )}
         </div>
-        
+
         {/* Problems List */}
         {problems.length === 0 ? (
           <div className="text-center py-12">
             <Info size={48} className="mx-auto text-gray-500 mb-4" />
-            <h3 className="text-xl font-medium text-gray-300 mb-2">No problems logged yet</h3>
-            <p className="text-gray-400 mb-6">Start tracking your progress by logging your first problem.</p>
+            <h3 className="text-xl font-medium text-gray-300 mb-2">
+              No problems logged yet
+            </h3>
+            <p className="text-gray-400 mb-6">
+              Start tracking your progress by logging your first problem.
+            </p>
             <Button
               variant="neon"
               onClick={() => {
@@ -420,13 +500,17 @@ const ProblemLogger = () => {
         ) : filteredProblems.length === 0 ? (
           <div className="text-center py-12">
             <Info size={48} className="mx-auto text-gray-500 mb-4" />
-            <h3 className="text-xl font-medium text-gray-300 mb-2">No matching problems found</h3>
-            <p className="text-gray-400 mb-4">Try adjusting your search or filters.</p>
+            <h3 className="text-xl font-medium text-gray-300 mb-2">
+              No matching problems found
+            </h3>
+            <p className="text-gray-400 mb-4">
+              Try adjusting your search or filters.
+            </p>
             <Button
               variant="outline"
               onClick={() => {
-                setSearchTerm('');
-                setDifficultyFilter('All');
+                setSearchTerm("");
+                setDifficultyFilter("All");
                 setTagsFilter([]);
               }}
             >
@@ -440,48 +524,62 @@ const ProblemLogger = () => {
             animate="show"
             className="space-y-4"
           >
-            {filteredProblems.map((problem) => (
+            {filteredProblems.map((problems) => (
               <motion.div
-                key={problem.id}
+                key={problems.id}
                 variants={itemVariants}
                 className="glassmorphism rounded-lg p-4 border border-gray-800 hover:border-gray-700 transition-colors"
               >
                 <div className="flex flex-col md:flex-row md:items-center justify-between">
                   <div>
                     <div className="flex items-center gap-3">
-                      <h3 className="font-medium text-lg text-white">{problem.name}</h3>
-                      <span className={`text-xs ${getDifficultyColor(problem.difficulty)} px-2 py-0.5 rounded ${getDifficultyColor(problem.difficulty).replace('text', 'bg').replace('400', '900/40')}`}>
-                        {problem.difficulty}
+                      <h3 className="font-medium text-lg text-white">
+                        {problems.name}
+                      </h3>
+                      <span
+                        className={`text-xs ${getDifficultyColor(
+                          problems.difficulty
+                        )} px-2 py-0.5 rounded ${getDifficultyColor(
+                          problems.difficulty
+                        )
+                          .replace("text", "bg")
+                          .replace("400", "900/40")}`}
+                      >
+                        {problems.difficulty}
                       </span>
-                      {problem.needsRevisit && (
+                      {problems.needsRevisit && (
                         <span className="text-xs bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded-md">
                           Revisit
                         </span>
                       )}
                     </div>
-                    
+
                     <div className="mt-2 space-y-2">
                       {/* Tags */}
+                      {/* Tags */}
                       <div className="flex flex-wrap gap-2">
-                        {problem.tags.map((tag) => (
-                          <span key={tag} className="text-xs bg-dark-300 text-gray-300 px-2 py-0.5 rounded">
+                        {(problems.tags || []).map((tag) => (
+                          <span
+                            key={tag}
+                            className="text-xs bg-dark-300 text-gray-300 px-2 py-0.5 rounded"
+                          >
                             {tag}
                           </span>
                         ))}
                       </div>
-                      
+
                       {/* Problem Details */}
                       <div className="flex items-center gap-4 text-sm text-gray-400">
                         <span className="flex items-center">
                           <Clock size={14} className="mr-1" />
-                          {formatTime(problem.timeTaken)}
+                          {formatTime(problems.timeTaken)}
                         </span>
                         <span>
-                          {formatRelativeTime(problem.solvedAt.toDate())}
+                          {/* {formatRelativeTime(problems.solvedAt.toDate())} */}
                         </span>
-                        {problem.link && (
+                        {problems.link && (
                           <a
-                            href={problem.link}
+                            href={problems.link}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center text-primary hover:text-primary/80"
@@ -491,46 +589,56 @@ const ProblemLogger = () => {
                           </a>
                         )}
                       </div>
-                      
+
                       {/* Notes (if any) */}
-                      {problem.notes && (
+                      {problems.notes && (
                         <p className="text-sm text-gray-300 mt-2 border-l-2 border-gray-700 pl-3">
-                          {problem.notes}
+                          {problems.notes}
                         </p>
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center mt-4 md:mt-0 gap-2">
                     <span className="bg-primary/20 text-white px-3 py-1 rounded-md font-mono">
-                      +{problem.points} pts
+                      +{problems.points} pts
                     </span>
-                    
+
                     <div className="flex gap-2">
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleToggleRevisit(problem.id!, problem.needsRevisit)}
-                        className={`h-8 w-8 ${problem.needsRevisit ? 'text-neon-cyan' : 'text-gray-400'}`}
-                        title={problem.needsRevisit ? "Remove from retry list" : "Add to retry list"}
+                        // onClick={() =>
+                        //   handleToggleRevisit(problems.id!, problems.needsRevisit)
+                        // }
+                        className={`h-8 w-8 ${
+                          problems.needsRevisit
+                            ? "text-neon-cyan"
+                            : "text-gray-400"
+                        }`}
+                        title={
+                          problems.needsRevisit
+                            ? "Remove from retry list"
+                            : "Add to retry list"
+                        }
                       >
                         <BookMarked size={16} />
                       </Button>
-                      
+
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleEdit(problem)}
+                        // onClick={() => handleEdit(problem)}
                         className="h-8 w-8 text-gray-400"
                         title="Edit problem"
                       >
                         <Edit2 size={16} />
                       </Button>
-                      
+
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDelete(problem.id!)}
+                        // onClick={() => handleDelete(problem.id!)}
                         className="h-8 w-8 text-gray-400"
                         title="Delete problem"
                       >
@@ -544,12 +652,15 @@ const ProblemLogger = () => {
           </motion.div>
         )}
       </div>
-      
+
       {/* Problem Logger Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/70" onClick={() => setIsModalOpen(false)}></div>
-          
+          <div
+            className="fixed inset-0 bg-black/70"
+            onClick={() => setIsModalOpen(false)}
+          ></div>
+
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -564,15 +675,18 @@ const ProblemLogger = () => {
             >
               <X size={20} />
             </button>
-            
+
             <h2 className="text-xl font-semibold mb-6 text-white font-mono">
-              {editingProblemId ? 'Edit Problem' : 'Log New Problem'}
+              {editingProblemId ? "Edit Problem" : "Log New Problem"}
             </h2>
-            
+
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Problem Name */}
               <div>
-                <label htmlFor="problem-name" className="block text-sm font-medium text-gray-300 mb-1">
+                <label
+                  htmlFor="problem-name"
+                  className="block text-sm font-medium text-gray-300 mb-1"
+                >
                   Problem Name *
                 </label>
                 <Input
@@ -584,17 +698,24 @@ const ProblemLogger = () => {
                   required
                 />
               </div>
-              
+
               {/* Difficulty and Time Taken */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="difficulty" className="block text-sm font-medium text-gray-300 mb-1">
+                  <label
+                    htmlFor="difficulty"
+                    className="block text-sm font-medium text-gray-300 mb-1"
+                  >
                     Difficulty
                   </label>
                   <select
                     id="difficulty"
                     value={difficulty}
-                    onChange={(e) => setDifficulty(e.target.value as 'Easy' | 'Medium' | 'Hard')}
+                    onChange={(e) =>
+                      setDifficulty(
+                        e.target.value as "Easy" | "Medium" | "Hard"
+                      )
+                    }
                     className="w-full rounded-md border border-gray-700 bg-dark-400/50 px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                   >
                     {DIFFICULTY_OPTIONS.map((option) => (
@@ -604,9 +725,12 @@ const ProblemLogger = () => {
                     ))}
                   </select>
                 </div>
-                
+
                 <div>
-                  <label htmlFor="time-taken" className="block text-sm font-medium text-gray-300 mb-1">
+                  <label
+                    htmlFor="time-taken"
+                    className="block text-sm font-medium text-gray-300 mb-1"
+                  >
                     Time Taken (minutes)
                   </label>
                   <Input
@@ -619,10 +743,13 @@ const ProblemLogger = () => {
                   />
                 </div>
               </div>
-              
+
               {/* Reference Link */}
               <div>
-                <label htmlFor="link" className="block text-sm font-medium text-gray-300 mb-1">
+                <label
+                  htmlFor="link"
+                  className="block text-sm font-medium text-gray-300 mb-1"
+                >
                   Reference Link (optional)
                 </label>
                 <Input
@@ -634,7 +761,7 @@ const ProblemLogger = () => {
                   className="bg-dark-400/50 border-gray-700"
                 />
               </div>
-              
+
               {/* Tags */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -645,18 +772,18 @@ const ProblemLogger = () => {
                     <button
                       key={tag}
                       type="button"
-                      onClick={() => toggleTag(tag)}
+                      // onClick={() => toggleTag(tag)}
                       className={`px-2 py-1 rounded-md text-xs ${
                         tags.includes(tag)
-                          ? 'bg-primary text-white'
-                          : 'bg-dark-400 text-gray-300 hover:bg-dark-200'
+                          ? "bg-primary text-white"
+                          : "bg-dark-400 text-gray-300 hover:bg-dark-200"
                       }`}
                     >
                       {tag}
                     </button>
                   ))}
                 </div>
-                
+
                 <div className="flex items-center gap-2 mt-2">
                   <Input
                     value={newTag}
@@ -667,18 +794,21 @@ const ProblemLogger = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handleAddTag}
+                    // onClick={handleAddTag}
                     disabled={!newTag}
                   >
                     Add
                   </Button>
                 </div>
               </div>
-              
+
               {/* Struggle Level and Used Help */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="struggle-level" className="block text-sm font-medium text-gray-300 mb-1">
+                  <label
+                    htmlFor="struggle-level"
+                    className="block text-sm font-medium text-gray-300 mb-1"
+                  >
                     Struggle Level (1-5)
                   </label>
                   <div className="flex items-center">
@@ -688,13 +818,15 @@ const ProblemLogger = () => {
                       min="1"
                       max="5"
                       value={strugglelevel}
-                      onChange={(e) => setStruggleLevel(parseInt(e.target.value))}
+                      onChange={(e) =>
+                        setStruggleLevel(parseInt(e.target.value))
+                      }
                       className="w-full h-2 bg-dark-400 rounded-full appearance-none cursor-pointer accent-primary"
                     />
                     <span className="ml-2 text-white">{strugglelevel}</span>
                   </div>
                 </div>
-                
+
                 <div className="flex flex-col pt-6">
                   <div className="flex items-center mb-2">
                     <input
@@ -704,11 +836,14 @@ const ProblemLogger = () => {
                       onChange={(e) => setUsedHelp(e.target.checked)}
                       className="w-4 h-4 accent-primary rounded"
                     />
-                    <label htmlFor="used-help" className="ml-2 text-sm text-gray-300">
+                    <label
+                      htmlFor="used-help"
+                      className="ml-2 text-sm text-gray-300"
+                    >
                       Used hints/solutions
                     </label>
                   </div>
-                  
+
                   <div className="flex items-center">
                     <input
                       id="needs-revisit"
@@ -717,16 +852,22 @@ const ProblemLogger = () => {
                       onChange={(e) => setNeedsRevisit(e.target.checked)}
                       className="w-4 h-4 accent-primary rounded"
                     />
-                    <label htmlFor="needs-revisit" className="ml-2 text-sm text-gray-300">
+                    <label
+                      htmlFor="needs-revisit"
+                      className="ml-2 text-sm text-gray-300"
+                    >
                       Add to retry list
                     </label>
                   </div>
                 </div>
               </div>
-              
+
               {/* Notes */}
               <div>
-                <label htmlFor="notes" className="block text-sm font-medium text-gray-300 mb-1">
+                <label
+                  htmlFor="notes"
+                  className="block text-sm font-medium text-gray-300 mb-1"
+                >
                   Notes (optional)
                 </label>
                 <textarea
@@ -737,7 +878,7 @@ const ProblemLogger = () => {
                   className="w-full rounded-md border border-gray-700 bg-dark-400/50 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary min-h-[100px]"
                 />
               </div>
-              
+
               {/* Submit Buttons */}
               <div className="flex justify-end gap-3 pt-2">
                 <Button
@@ -748,7 +889,7 @@ const ProblemLogger = () => {
                   Cancel
                 </Button>
                 <Button type="submit" variant="glow">
-                  {editingProblemId ? 'Update Problem' : 'Log Problem'}
+                  {editingProblemId ? "Update Problem" : "Log Problem"}
                 </Button>
               </div>
             </form>
