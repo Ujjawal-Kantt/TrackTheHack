@@ -29,25 +29,53 @@ const Login = () => {
 
     try {
       setLoading(true);
-      // await login(email, password);
+
+      // Make the API call to the backend
+      const response = await fetch(
+        "https://track-the-hack-tau.vercel.app/api/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        }
+      );
+
+      // Parse the response
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Invalid email or password");
+      }
+
+      // Store the JWT token and userId in localStorage
+      localStorage.setItem("jwtToken", data.jwtToken);
+      localStorage.setItem("userId", data.userId);
+
+      // Show success toast
       toast({
         title: "Welcome back!",
         description: "You have successfully logged in",
         variant: "default",
       });
+
+      // Navigate to the home page
       navigate("/");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error);
       toast({
         title: "Login Failed",
-        description: "Invalid email or password",
+        description: error.message || "Invalid email or password",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
-
   const handleGoogleLogin = async () => {
     try {
       setLoading(true);

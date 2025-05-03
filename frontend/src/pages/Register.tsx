@@ -1,104 +1,130 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { useAuth } from '../contexts/AuthContext';
-import { useToast } from '../hooks/useToast';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Code, Github } from 'lucide-react';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "../hooks/useToast";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Code, Github } from "lucide-react";
 
 const Register = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const { register, loginWithGoogle, loginWithGithub } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password || !displayName) {
       toast({
-        title: 'Error',
-        description: 'Please fill in all fields',
-        variant: 'destructive',
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
       });
       return;
     }
-    
+
     if (password.length < 6) {
       toast({
-        title: 'Error',
-        description: 'Password must be at least 6 characters long',
-        variant: 'destructive',
+        title: "Error",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
       });
       return;
     }
-    
+
     try {
       setLoading(true);
-      await register(email, password, displayName);
+
+      // Make the API call to the backend
+      const response = await fetch(
+        "https://track-the-hack-tau.vercel.app/api/auth/register",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            password,
+            name: displayName,
+          }),
+        }
+      );
+
+      // Parse the response
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to register");
+      }
+
+      // Show success toast
       toast({
-        title: 'Success!',
-        description: 'Your account has been created',
+        title: "Success!",
+        description: "Your account has been created",
       });
-      navigate('/');
+
+      // Navigate to the home page
+      navigate("/login");
     } catch (error: any) {
-      console.error('Registration error:', error);
+      console.error("Registration error:", error);
       toast({
-        title: 'Registration Failed',
-        description: error.message || 'Failed to create account',
-        variant: 'destructive',
+        title: "Registration Failed",
+        description: error.message || "Failed to create account",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
-  
+
   const handleGoogleLogin = async () => {
     try {
       setLoading(true);
       await loginWithGoogle();
       toast({
-        title: 'Welcome!',
-        description: 'You have successfully signed up with Google',
+        title: "Welcome!",
+        description: "You have successfully signed up with Google",
       });
-      navigate('/');
+      navigate("/");
     } catch (error) {
-      console.error('Google signup error:', error);
+      console.error("Google signup error:", error);
       toast({
-        title: 'Signup Failed',
-        description: 'Error signing up with Google',
-        variant: 'destructive',
+        title: "Signup Failed",
+        description: "Error signing up with Google",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
-  
+
   const handleGithubLogin = async () => {
     try {
       setLoading(true);
       await loginWithGithub();
       toast({
-        title: 'Welcome!',
-        description: 'You have successfully signed up with GitHub',
+        title: "Welcome!",
+        description: "You have successfully signed up with GitHub",
       });
-      navigate('/');
+      navigate("/");
     } catch (error) {
-      console.error('GitHub signup error:', error);
+      console.error("GitHub signup error:", error);
       toast({
-        title: 'Signup Failed',
-        description: 'Error signing up with GitHub',
-        variant: 'destructive',
+        title: "Signup Failed",
+        description: "Error signing up with GitHub",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
-  
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <motion.div
@@ -116,10 +142,14 @@ const Register = () => {
           >
             <Code size={32} className="text-neon-cyan" />
           </motion.div>
-          <h1 className="text-3xl font-bold mb-2 text-gray-50 font-mono tracking-tight">Join CodePulse</h1>
-          <p className="text-gray-400">Start tracking your coding journey today</p>
+          <h1 className="text-3xl font-bold mb-2 text-gray-50 font-mono tracking-tight">
+            Join CodePulse
+          </h1>
+          <p className="text-gray-400">
+            Start tracking your coding journey today
+          </p>
         </div>
-        
+
         <form onSubmit={handleRegister} className="space-y-4">
           <div>
             <Input
@@ -158,20 +188,22 @@ const Register = () => {
             variant="glow"
             disabled={loading}
           >
-            {loading ? 'Creating account...' : 'Create Account'}
+            {loading ? "Creating account..." : "Create Account"}
           </Button>
         </form>
-        
+
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-700"></div>
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="px-2 bg-card text-gray-400">Or continue with</span>
+              <span className="px-2 bg-card text-gray-400">
+                Or continue with
+              </span>
             </div>
           </div>
-          
+
           <div className="mt-6 grid grid-cols-2 gap-3">
             <Button
               type="button"
@@ -212,9 +244,9 @@ const Register = () => {
             </Button>
           </div>
         </div>
-        
+
         <p className="mt-8 text-center text-sm text-gray-400">
-          Already have an account?{' '}
+          Already have an account?{" "}
           <Link to="/login" className="text-neon-cyan hover:underline">
             Login
           </Link>
