@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
+import PrivateRoute from "./components/PrivateRoute";
 import { ParticleBackground } from "./components/ui/ParticleBackground";
 
 // Pages
@@ -37,23 +38,18 @@ function App() {
     <>
       <ParticleBackground />
       <Routes>
-        <Route
-          path="/login"
-          element={!user ? <Login /> : <Navigate to="/" />}
-        />
-        <Route
-          path="/register"
-          element={!user ? <Register /> : <Navigate to="/" />}
-        />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
         {/* Protected routes */}
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="problem-logger" element={<ProblemLogger />} />
-          <Route path="calendar" element={<Calendar />} />
-          <Route path="retry-list" element={<RetryList />} />
+        <Route element={<PrivateRoute />}>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="problem-logger" element={<ProblemLogger />} />
+            <Route path="calendar" element={<Calendar />} />
+            <Route path="retry-list" element={<RetryList />} />
+          </Route>
         </Route>
-
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>
