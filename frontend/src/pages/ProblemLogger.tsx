@@ -94,10 +94,18 @@ const ProblemLogger = () => {
         throw new Error(data.error || "Failed to fetch problems");
       }
 
-      // Ensure all problems have a `tags` property
+      // Ensure all problems have a `tags` property and assign points based on difficulty
       const processedData = data.map((problem: Problem) => ({
         ...problem,
         tags: problem.tags || [], // Default to an empty array if `tags` is undefined
+        points:
+          problem.difficulty === "Easy"
+            ? 1
+            : problem.difficulty === "Medium"
+            ? 3
+            : problem.difficulty === "Hard"
+            ? 5
+            : 0,
       }));
 
       // Update the problems state
