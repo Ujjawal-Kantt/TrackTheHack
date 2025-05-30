@@ -10,6 +10,7 @@ import {
   getDifficultyColor,
   formatRelativeTime,
 } from "../lib/utils";
+import ConfirmModal from "../components/ui/confirmModal";
 import {
   Clock,
   Edit2,
@@ -62,6 +63,10 @@ const ProblemLogger = () => {
   const [needsRevisit, setNeedsRevisit] = useState(false);
   const [availableTags, setAvailableTags] = useState<string[]>(INITIAL_TAGS);
   const [newTag, setNewTag] = useState("");
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [problemIdToDelete, setProblemIdToDelete] = useState<string | null>(
+    null
+  );
 
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState("");
@@ -263,21 +268,40 @@ const ProblemLogger = () => {
 
   // Handle delete problem
   const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this problem?")) {
-      try {
-        await deleteProblem(id);
-        toast({
-          title: "Problem Deleted",
-          description: "Problem has been deleted successfully",
-        });
-      } catch (error) {
-        console.error("Error deleting problem:", error);
-        toast({
-          title: "Error",
-          description: "Failed to delete problem",
-          variant: "destructive",
-        });
+    try {
+      const jwtToken = localStorage.getItem("jwtToken");
+      if (!jwtToken) {
+        throw new Error("User is not authenticated. Please log in again.");
       }
+
+      const response = await fetch(
+        `https://track-the-hack-tau.vercel.app/api/problems/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${jwtToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete problem");
+      }
+
+      setProblems((prev) => prev.filter((problem) => problem.id !== id));
+      toast({
+        title: "Problem Deleted",
+        description: "Problem has been deleted successfully",
+      });
+    } catch (error: any) {
+      console.error("Error deleting problem:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete problem",
+        variant: "destructive",
+      });
     }
   };
 
@@ -673,7 +697,10 @@ const ProblemLogger = () => {
                       <Button
                         variant="ghost"
                         size="icon"
-                        // onClick={() => handleDelete(problem.id!)}
+                        onClick={() => {
+                          setProblemIdToDelete(problems.id!);
+                          setConfirmDeleteOpen(true);
+                        }}
                         className="h-8 w-8 text-gray-400"
                         title="Delete problem"
                       >
@@ -682,6 +709,16 @@ const ProblemLogger = () => {
                     </div>
                   </div>
                 </div>
+                <ConfirmModal
+                  isOpen={confirmDeleteOpen}
+                  onClose={() => setConfirmDeleteOpen(false)}
+                  onConfirm={() => {
+                    if (problemIdToDelete) handleDelete(problemIdToDelete);
+                    setProblemIdToDelete(null);
+                  }}
+                  title="Delete Problem?"
+                  message="Are you sure you want to delete this problem? This action cannot be undone."
+                />
               </motion.div>
             ))}
           </motion.div>
