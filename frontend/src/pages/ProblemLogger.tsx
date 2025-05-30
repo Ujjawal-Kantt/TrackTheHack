@@ -204,11 +204,38 @@ const ProblemLogger = () => {
       if (!response.ok) {
         throw new Error(data.error || "Failed to log the problem");
       }
-
-      toast({
-        title: "Problem Logged",
-        description: `Problem "${problemData.name}" has been logged successfully!`,
-      });
+      if (needsRevisit) {
+        const respone = await fetch(
+          "https://track-the-hack-tau.vercel.app/api/retryList",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${jwtToken}`,
+            },
+            body: JSON.stringify({ problem_id: data.problemId }),
+          }
+        );
+        if (respone.ok) {
+          toast({
+            title: "Problem Logged and Added to Retry List",
+            description: `Problem "${problemData.name}" has been logged and added to your retry list!`,
+          });
+        }
+        if (!respone.ok) {
+          toast({
+            title: "Error",
+            description: "Failed to add problem to retry list",
+            variant: "destructive",
+          });
+        }
+      }
+      if (!needsRevisit) {
+        toast({
+          title: "Problem Logged",
+          description: `Problem "${problemData.name}" has been logged successfully!`,
+        });
+      }
 
       setIsModalOpen(false);
       resetForm();
