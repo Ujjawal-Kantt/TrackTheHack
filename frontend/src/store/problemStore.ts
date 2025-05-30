@@ -21,7 +21,7 @@ export interface Problem {
   timeTaken: number; // in minutes
   solvedAt: Timestamp;
   notes: string;
-  link?: string;
+  reference_link?: string;
   tags: string[];
   struggleLevel: number;
   usedHelp: boolean;

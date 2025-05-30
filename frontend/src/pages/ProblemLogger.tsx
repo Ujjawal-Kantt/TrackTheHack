@@ -16,6 +16,7 @@ import {
   Trash2,
   BookMarked,
   Link as LinkIcon,
+  ArrowUpRight,
   Info,
   X,
 } from "lucide-react";
@@ -107,9 +108,6 @@ const ProblemLogger = () => {
             ? 5
             : 0,
       }));
-
-      // Update the problems state
-      console.log(processedData);
       setProblems(processedData);
     } catch (error: any) {
       console.error("Error fetching problems:", error);
@@ -255,7 +253,7 @@ const ProblemLogger = () => {
     setDifficulty(problem.difficulty);
     setTimeTaken(problem.timeTaken);
     setNotes(problem.notes);
-    setLink(problem.link || "");
+    setLink(problem.reference_link || "");
     setTags(problem.tags);
     setStruggleLevel(problem.struggleLevel);
     setUsedHelp(problem.usedHelp);
@@ -612,17 +610,19 @@ const ProblemLogger = () => {
                         <span>
                           {/* {formatRelativeTime(problems.solvedAt.toDate())} */}
                         </span>
-                        {problems.link && (
-                          <a
-                            href={problems.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center text-primary hover:text-primary/80"
-                          >
-                            <LinkIcon size={14} className="mr-1" />
-                            Link
-                          </a>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {problems.reference_link && (
+                            <a
+                              href={problems.reference_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center text-neon-cyan text-sm hover:underline"
+                            >
+                              <ArrowUpRight size={14} className="mr-1" />
+                              Open Problem
+                            </a>
+                          )}
+                        </div>
                       </div>
 
                       {/* Notes (if any) */}
