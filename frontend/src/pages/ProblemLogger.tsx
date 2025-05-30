@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useAuth } from "../contexts/AuthContext";
 import { Problem, useProblemStore } from "../store/problemStore";
 import { useToast } from "../hooks/useToast";
 import { Button } from "../components/ui/button";
@@ -294,6 +293,7 @@ const ProblemLogger = () => {
       toast({
         title: "Problem Deleted",
         description: "Problem has been deleted successfully",
+        variant: "destructive",
       });
     } catch (error: any) {
       console.error("Error deleting problem:", error);
